@@ -35,16 +35,16 @@ steps:
      export DEVKITARM="/opt/devkitpro/devkitARM"
      sudo cp libmm7.a /opt/devkitpro/libnds/lib/libmm7.a
      make
-     mv lolSnes.nds lolSnes_normal.nds
+     mv lolSnes-master.nds lolSnes_normal.nds
      rm Makefile
      mv Makefile_nitrofs Makefile
      make
-     mv lolSnes.nds lolSnes_nitrofs.nds
+     mv lolSnes-master.nds lolSnes_nitrofs.nds
   displayName: 'Build lolSnes'
 
 - script: |
      mkdir lolSnes/
-     cp lolSnes.nds lolSnes/
+     cp lolSnes_normal.nds lolSnes/
      cp lolSnes_nitrofs.nds lolSnes/
      7z a lolSnes.7z lolSnes/
      cp lolSnes.7z $(Build.ArtifactStagingDirectory)/lolSnes.7z
