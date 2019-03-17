@@ -7,9 +7,9 @@ endif
 
 include $(DEVKITARM)/ds_rules
 
-export TARGET		:=	$(shell basename $(CURDIR))
+export TARGET		:=	lolSnes
 export TOPDIR		:=	$(CURDIR)
-NITRODATA	:=	nitrofiles
+NITRODATA		:=	nitrofiles
 
 ifneq ($(strip $(NITRODATA)),)
 	export NITRO_FILES	:=	$(CURDIR)/$(NITRODATA)
