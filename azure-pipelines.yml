@@ -1,8 +1,3 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
 trigger:
   branches:
     include:
@@ -38,23 +33,19 @@ steps:
 - script: |
      export DEVKITPRO="/opt/devkitpro"
      export DEVKITARM="/opt/devkitpro/devkitARM"
-  displayName: 'Make DevKitPro work'
-
-- script: |
+     sudo cp libmm7.a /opt/devkitpro/libnds/lib/libmm7.a
      make
-     mkdir lolSnes/
-     cp lolSnes.nds lolSnes/
-  displayName: 'Build lolSnes'
-
-- script: |
+     mv lolSnes.nds lolSnes_normal.nds
      rm Makefile
      mv Makefile_nitrofs Makefile
      make
      mv lolSnes.nds lolSnes_nitrofs.nds
-     cp lolSnes_nitrofs.nds lolSnes/
-  displayName: 'Build lolSnes (nitroFS build)'
+  displayName: 'Build lolSnes'
 
 - script: |
+     mkdir lolSnes/
+     cp lolSnes.nds lolSnes/
+     cp lolSnes_nitrofs.nds lolSnes/
      7z a lolSnes.7z lolSnes/
      cp lolSnes.7z $(Build.ArtifactStagingDirectory)/lolSnes.7z
   displayName: 'Pack 7z'
