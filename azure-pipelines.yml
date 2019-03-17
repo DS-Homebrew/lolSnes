@@ -38,8 +38,7 @@ steps:
 
 - script: |
      mkdir lolSnes/
-     cp lolSnes.nds lolSnes/
-     cp lolSnes_nitrofs.nds lolSnes/
+     cp lolSnes.nds lolSnes_nitrofs.nds lolSnes/
      7z a lolSnes.7z lolSnes/
      cp lolSnes.7z $(Build.ArtifactStagingDirectory)/lolSnes.7z
   displayName: 'Pack 7z'
