@@ -1,8 +1,3 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
 trigger:
   branches:
     include:
@@ -30,7 +25,6 @@ steps:
   displayName: 'Setup environment'
 
 - script: |
-    echo $(TRAVIS_COMMIT)
     echo $(COMMIT_TAG)
     echo $(BUILD_SOURCEVERSION)
   displayName: 'Echo Variables'
@@ -38,23 +32,14 @@ steps:
 - script: |
      export DEVKITPRO="/opt/devkitpro"
      export DEVKITARM="/opt/devkitpro/devkitARM"
-  displayName: 'Make DevKitPro work'
-
-- script: |
      make
-     mkdir lolSnes/
-     cp lolSnes.nds lolSnes/
+     make -f Makefile_nitrofs
   displayName: 'Build lolSnes'
 
 - script: |
-     rm Makefile
-     mv Makefile_nitrofs Makefile
-     make
-     mv lolSnes.nds lolSnes_nitrofs.nds
+     mkdir lolSnes/
+     cp lolSnes.nds lolSnes/
      cp lolSnes_nitrofs.nds lolSnes/
-  displayName: 'Build lolSnes (nitroFS build)'
-
-- script: |
      7z a lolSnes.7z lolSnes/
      cp lolSnes.7z $(Build.ArtifactStagingDirectory)/lolSnes.7z
   displayName: 'Pack 7z'
