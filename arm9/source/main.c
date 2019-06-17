@@ -111,7 +111,7 @@ bool isGoodFile(struct dirent* entry)
 
 void makeROMList()
 {
-	DIR* romdir = opendir("snes/");
+	DIR* romdir = opendir("snes");
 	int i = 0;
 	if (romdir) {
 		struct dirent* entry;
@@ -177,7 +177,7 @@ void vblank_idle()
 	scanKeys();
 	int pressed = keysHeld();
 
-	if ((pressed & KEY_L) && (pressed & KEY_R) && (pressed & KEY_B) && (pressed & KEY_DOWN) {
+	if ((pressed & KEY_L) && (pressed & KEY_R) && (pressed & KEY_B) && (pressed & KEY_DOWN)) {
 		toggleConsole(!debug_on);
 	}
 }
