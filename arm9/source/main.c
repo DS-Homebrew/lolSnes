@@ -178,10 +178,7 @@ void vblank_idle()
 	int pressed = keysHeld();
 
 	if ((pressed & KEY_L) && (pressed & KEY_R) && (pressed & KEY_B) && (pressed & KEY_DOWN) {
-		lastkeys = keys;
-		keypress = keys;
-		if (!(keys & 0x0382))
-			toggleConsole(!debug_on);
+		toggleConsole(!debug_on);
 	}
 }
 
