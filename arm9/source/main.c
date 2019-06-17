@@ -1,24 +1,25 @@
 /*
-    Copyright 2013 Mega-Mario
+	Copyright 2013 Mega-Mario
 
-    This file is part of lolSnes.
+	This file is part of lolSnes.
 
-    lolSnes is free software: you can redistribute it and/or modify it under
-    the terms of the GNU General Public License as published by the Free
-    Software Foundation, either version 3 of the License, or (at your option)
-    any later version.
+	lolSnes is free software: you can redistribute it and/or modify it under
+	the terms of the GNU General Public License as published by the Free
+	Software Foundation, either version 3 of the License, or (at your option)
+	any later version.
 
-    lolSnes is distributed in the hope that it will be useful, but WITHOUT ANY 
-    WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS 
-    FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+	lolSnes is distributed in the hope that it will be useful, but WITHOUT ANY 
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS 
+	FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License along 
-    with lolSnes. If not, see http://www.gnu.org/licenses/.
+	You should have received a copy of the GNU General Public License along 
+	with lolSnes. If not, see http://www.gnu.org/licenses/.
 */
 
 #include <nds.h>
 #include <stdio.h>
 #include <dirent.h>
+
 #ifdef NITROFS_ROM
 #include <filesystem.h>
 #else
@@ -38,24 +39,24 @@
 void doSplashscreen()
 {
 	int i;
-	
+
 	u16* pal = (u16*)0x05000000;
 	for (i = 0; i < (lolsnes_screenPalLen >> 1); i++)
 		pal[i] = lolsnes_screenPal[i];
-	
+
 	videoBgEnable(0);
-	
+
 	int mapblock = ((lolsnes_screenTilesLen + 0x7FF) >> 11);
 	*(vu16*)0x04000008 = (mapblock << 8) | 0x0080;
-	
+
 	u32* tiles = (u32*)0x06000000;
 	for (i = 0; i < (lolsnes_screenTilesLen >> 2); i++)
 		tiles[i] = lolsnes_screenTiles[i];
-		
+
 	u16* map = (u16*)(0x06000000 + (mapblock << 11));
 	for (i = 0; i < (lolsnes_screenMapLen >> 1); i++)
 		map[i] = lolsnes_screenMap[i];
-		
+
 	*(vu16*)0x04000010 = 0;
 	*(vu16*)0x04000012 = 0;
 }
@@ -110,31 +111,28 @@ bool isGoodFile(struct dirent* entry)
 
 void makeROMList()
 {
-	DIR* romdir = opendir("/roms/snes/");
+	DIR* romdir = opendir("snes/");
 	int i = 0;
-	if (romdir)
-	{
+	if (romdir) {
 		struct dirent* entry;
-		
-		while (entry = readdir(romdir))
-		{
+
+		while (entry = readdir(romdir)) {
 			if (!isGoodFile(entry)) continue;
 			i++;
 		}
-			
+
 		rewinddir(romdir);
-		
+
 		filelist = (char*)malloc(i * 256);
 		nfiles = i;
 		i = 0;
-		while (entry = readdir(romdir))
-		{
+		while (entry = readdir(romdir)) {
 			if (!isGoodFile(entry)) continue;
 			strncpy(&filelist[i << 8], entry->d_name, 255);
 			filelist[(i << 8) + 255] = '\0';
 			i++;
 		}
-		
+
 		closedir(romdir);
 	}
 }
@@ -145,7 +143,7 @@ bool debug_on = false;
 void toggleConsole(bool show)
 {
 	debug_on = show;
-	
+
 	if (show)
 	{
 		videoBgEnableSub(0);
@@ -176,10 +174,10 @@ ITCM_CODE void vblank()
 
 void vblank_idle()
 {
-	// debug: toggle menu/console when pressing L+R+Down+B
-	u16 keys = *(vu16*)0x04000130;
-	if (keys != lastkeys)
-	{
+	scanKeys();
+	int pressed = keysHeld();
+
+	if ((pressed & KEY_L) && (pressed & KEY_R) && (pressed & KEY_B) && (pressed & KEY_DOWN) {
 		lastkeys = keys;
 		keypress = keys;
 		if (!(keys & 0x0382))
@@ -201,9 +199,9 @@ void menuPrint(int x, int y, char* str)
 {
 	u16* menu = (u16*)0x06201800;
 	int i;
-	
+
 	menu += (y << 5) + x;
-	
+
 	for (i = 0; str[i] != '\0'; i++)
 	{
 		menu[i] = 0xF000 | str[i];
@@ -214,31 +212,30 @@ void makeMenu()
 {
 	menuPrint(0, 0, "- lolSnes " VERSION " -                ");
 	menuPrint(0, 1, "________________________________");
-	
+
 	int i;
 	int maxfile;
-	
+
 	if ((nfiles - menuscroll) <= 22) maxfile = (nfiles - menuscroll);
 	else maxfile = 22;
-	
-	for (i = 0; i < maxfile; i++)
-	{
+
+	for (i = 0; i < maxfile; i++) {
 		menuPrint(0, 2+i, "                                ");
 		menuPrint(2, 2+i, &filelist[(menuscroll+i) << 8]);
 		if ((menuscroll+i) == menusel)
 			menuPrint(0, 2+i, "\x10");
 	}
-	
+
 	menuPrint(31, 2, "\x1E");
 	menuPrint(31, 23, "\x1F");
 	for (i = 3; i < 23; i++)
 		menuPrint(31, i, "|");
-		
+
 	if ((nfiles - menuscroll) <= 22)
 		menuPrint(31, 22, "\x08");
 	else
 		menuPrint(31, 3 + ((menuscroll * 20) / (nfiles - 22)), "\x08");
-		
+
 	setMenuSel(2 + menusel - menuscroll);
 }
 
@@ -248,16 +245,16 @@ char fullpath[270];
 int main(int argc, char* argv[])
 {
 	int i;
-	
+
 	defaultExceptionHandler();
-	
+
 	irqEnable(IRQ_VBLANK);
 	irqEnable(IRQ_HBLANK);
-	
+
 	irqSet(IRQ_VBLANK, vblank_idle);
-	
+
 	fifoSetValue32Handler(FIFO_USER_02, arm7print, NULL);
-	
+
 	//vramSetBankA(VRAM_A_LCD);
 	videoSetMode(MODE_0_2D);
 	*(vu8*)0x04000240 = 0x81;
@@ -267,12 +264,12 @@ int main(int argc, char* argv[])
 	// bank C to ARM7, bank H for subscreen graphics
 	*(vu8*)0x04000242 = 0x82;
 	*(vu8*)0x04000248 = 0x81;
-	
+
 	videoSetModeSub(MODE_0_2D);
 	consoleInit(NULL, 0, BgType_Text4bpp, BgSize_T_256x256, 2, 0, false, true);
-	
+
 	*(vu16*)0x0400100A = 0x0300;
-	
+
 	setBackdropColorSub(0x7C00);
 	
 	// configure BLDCNT so that backdrop becomes black
@@ -285,7 +282,7 @@ int main(int argc, char* argv[])
 	*(vu16*)0x0400104A = 0x003F;
 	
 	toggleConsole(false);
-	
+
 #ifdef NITROFS_ROM
 	if (!nitroFSInit())
 #else
@@ -301,11 +298,10 @@ int main(int argc, char* argv[])
 	
 	makeMenu();
 
-	iprintf("lolSnes " VERSION ", by StapleButter\n");
-	iprintf("Improved by RocketRobz\n");
+	iprintf("lolSnes " VERSION ", by Arisotura\n");
 	
 	if (argc >= 2) {
-        char* filename = argv[1];
+		char* filename = argv[1];
 
 		if (!Mem_LoadROM(filename))
 		{
@@ -328,56 +324,46 @@ int main(int argc, char* argv[])
 
 		swiWaitForVBlank();
 		CPU_Run();
-    }
-    else for (;;)
-	{
-		if (keypress != 0x03FF)
-		{
-			if (!(keypress & 0x0040)) // up
-			{
-				menusel--;
-				if (menusel < 0) menusel = 0;
-				if (menusel < menuscroll) menuscroll = menusel;
-				makeMenu();
-			}
-			else if (!(keypress & 0x0080)) // down
-			{
-				menusel++;
-				if (menusel > nfiles-1) menusel = nfiles-1;
-				if (menusel-21 > menuscroll) menuscroll = menusel-21;
-				makeMenu();
-			}
-			else if ((keypress & 0x0003) != 0x0003) // A/B
-			{
-				strncpy(fullpath, "/roms/snes/", 11);
-				strncpy(fullpath + 11, &filelist[menusel << 8], 256);
-				
-				if (!Mem_LoadROM(fullpath))
-				{
-					iprintf("ROM loading failed\n");
-					continue;
-				}
-				
-				*(vu16*)0x04001000 &= 0xDFFF;
-				toggleConsole(true);
-				iprintf("ROM loaded, running\n");
+	} else for (;;) {
+		scanKeys();
+		int pressed = keysHeld();
 
-				CPU_Reset();
-				fifoSendValue32(FIFO_USER_01, 1);
-				
-				swiWaitForVBlank();
-				fifoSendValue32(FIFO_USER_01, 2);
-				
-				irqSet(IRQ_VBLANK, vblank);
-				irqSet(IRQ_HBLANK, PPU_HBlank);
+		if (pressed & KEY_DOWN) {
+			menusel--;
+			if (menusel < 0) menusel = 0;
+			if (menusel < menuscroll) menuscroll = menusel;
+			makeMenu();
+		} else if (pressed & KEY_UP) {
+			menusel++;
+			if (menusel > nfiles-1) menusel = nfiles-1;
+			if (menusel-21 > menuscroll) menuscroll = menusel-21;
+			makeMenu();
+		} else if (pressed & KEY_A) {
+			strncpy(fullpath, "snes/", 5);
+			strncpy(fullpath + 5, &filelist[menusel << 8], 256);
 
-				swiWaitForVBlank();
-				CPU_Run();
+			if (!Mem_LoadROM(fullpath)) {
+				iprintf("ROM loading failed\n");
+				continue;
 			}
-			
-			keypress = 0x03FF;
+
+			*(vu16*)0x04001000 &= 0xDFFF;
+			toggleConsole(true);
+			iprintf("ROM loaded, running\n");
+
+			CPU_Reset();
+			fifoSendValue32(FIFO_USER_01, 1);
+
+			swiWaitForVBlank();
+			fifoSendValue32(FIFO_USER_01, 2);
+
+			irqSet(IRQ_VBLANK, vblank);
+			irqSet(IRQ_HBLANK, PPU_HBlank);
+
+			swiWaitForVBlank();
+			CPU_Run();
 		}
-		
+			
 		swiWaitForVBlank();
 	}
 
