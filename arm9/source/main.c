@@ -239,7 +239,7 @@ void makeMenu()
 
 char fullpath[270];
 
-int main(int argc, char* argv[])
+int main(int argc, char **argv)
 {
 	int i;
 
@@ -281,7 +281,7 @@ int main(int argc, char* argv[])
 	toggleConsole(false);
 
 #ifdef NITROFS_ROM
-	if (!nitroFSInit())
+	if (!nitroFSInit(NULL))
 #else
 	if (!fatInitDefault())
 #endif
@@ -297,7 +297,7 @@ int main(int argc, char* argv[])
 
 	iprintf("lolSnes " VERSION ", by Arisotura\n");
 	
-	if (argc >= 2) {
+	if (argc >= 1) {
 		char* filename = argv[1];
 
 		if (!Mem_LoadROM(filename))
