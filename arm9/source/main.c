@@ -101,6 +101,11 @@ int nfiles;
 
 bool isGoodFile(struct dirent* entry)
 {
+
+	struct stat st;
+	stat(entry->d_name, &st);
+	if(st.st_mode & S_IFDIR) return true;
+
 	if (entry->d_type != DT_REG) return false;
 	
 	char* ext = &entry->d_name[strlen(entry->d_name) - 4];
@@ -109,9 +114,16 @@ bool isGoodFile(struct dirent* entry)
 	return true;
 }
 
+bool isDirectory(struct dirent* entry)
+{
+	struct stat st;
+	stat(entry->d_name, &st);
+	return st.st_mode & S_IFDIR;
+}
+
 void makeROMList()
 {
-	DIR* romdir = opendir("snes");
+	DIR* romdir = opendir(".");
 	int i = 0;
 	if (romdir) {
 		struct dirent* entry;
@@ -128,7 +140,10 @@ void makeROMList()
 		i = 0;
 		while (entry = readdir(romdir)) {
 			if (!isGoodFile(entry)) continue;
-			strncpy(&filelist[i << 8], entry->d_name, 255);
+			char temp[255];
+			if(isDirectory(entry))	snprintf(temp, sizeof(temp), "./%s", entry->d_name);
+			else	snprintf(temp, sizeof(temp), "%s", entry->d_name);
+			strncpy(&filelist[i << 8], temp, 255);
 			filelist[(i << 8) + 255] = '\0';
 			i++;
 		}
@@ -237,7 +252,7 @@ void makeMenu()
 }
 
 
-char fullpath[270];
+char fullpath[PATH_MAX+255];
 
 int main(int argc, char **argv)
 {
@@ -279,6 +294,8 @@ int main(int argc, char **argv)
 	*(vu16*)0x0400104A = 0x003F;
 	
 	toggleConsole(false);
+
+	keysSetRepeat(25, 5);
 
 #ifdef NITROFS_ROM
 	if (!nitroFSInit(NULL))
@@ -323,42 +340,50 @@ int main(int argc, char **argv)
 		CPU_Run();
 	} else for (;;) {
 		scanKeys();
-		int pressed = keysHeld();
+		int pressed = keysDownRepeat();
 
-		if (pressed & KEY_DOWN) {
+		if (pressed & KEY_UP) {
 			menusel--;
 			if (menusel < 0) menusel = 0;
 			if (menusel < menuscroll) menuscroll = menusel;
 			makeMenu();
-		} else if (pressed & KEY_UP) {
+		} else if (pressed & KEY_DOWN) {
 			menusel++;
 			if (menusel > nfiles-1) menusel = nfiles-1;
 			if (menusel-21 > menuscroll) menuscroll = menusel-21;
 			makeMenu();
 		} else if (pressed & KEY_A) {
-			strncpy(fullpath, "snes/", 5);
-			strncpy(fullpath + 5, &filelist[menusel << 8], 256);
+			if(strncmp(&filelist[menusel << 8], "./", 2) == 0) {
+				chdir(&filelist[menusel << 8]);
+				menusel = 0;
+				makeROMList();
+				makeMenu();
+			} else {
+				char path[PATH_MAX];
+				getcwd(path, PATH_MAX);
+				snprintf(fullpath, sizeof(fullpath), "%s%s", path, &filelist[menusel << 8]);
 
-			if (!Mem_LoadROM(fullpath)) {
-				iprintf("ROM loading failed\n");
-				continue;
+				if (!Mem_LoadROM(fullpath)) {
+					iprintf("ROM loading failed\n");
+					continue;
+				}
+
+				*(vu16*)0x04001000 &= 0xDFFF;
+				toggleConsole(true);
+				iprintf("ROM loaded, running\n");
+
+				CPU_Reset();
+				fifoSendValue32(FIFO_USER_01, 1);
+
+				swiWaitForVBlank();
+				fifoSendValue32(FIFO_USER_01, 2);
+
+				irqSet(IRQ_VBLANK, vblank);
+				irqSet(IRQ_HBLANK, PPU_HBlank);
+
+				swiWaitForVBlank();
+				CPU_Run();
 			}
-
-			*(vu16*)0x04001000 &= 0xDFFF;
-			toggleConsole(true);
-			iprintf("ROM loaded, running\n");
-
-			CPU_Reset();
-			fifoSendValue32(FIFO_USER_01, 1);
-
-			swiWaitForVBlank();
-			fifoSendValue32(FIFO_USER_01, 2);
-
-			irqSet(IRQ_VBLANK, vblank);
-			irqSet(IRQ_HBLANK, PPU_HBlank);
-
-			swiWaitForVBlank();
-			CPU_Run();
 		}
 			
 		swiWaitForVBlank();
