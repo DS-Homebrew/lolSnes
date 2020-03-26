@@ -118,12 +118,6 @@ ITCM_CODE void vblank()
 
 void vblank_idle()
 {
-	scanKeys();
-	int pressed = keysHeld();
-
-	if ((pressed & KEY_L) && (pressed & KEY_R) && (pressed & KEY_B) && (pressed & KEY_DOWN)) {
-		toggleConsole(!debug_on);
-	}
 }
 
 
