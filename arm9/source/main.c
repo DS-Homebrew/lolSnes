@@ -99,50 +99,10 @@ void sleepMode()
 char* filelist;
 int nfiles;
 
-bool isGoodFile(struct dirent* entry)
-{
-
-	struct stat st;
-	stat(entry->d_name, &st);
-	if(st.st_mode & S_IFDIR) return true;
-
-	if (entry->d_type != DT_REG) return false;
-	
-	char* ext = &entry->d_name[strlen(entry->d_name) - 4];
-	if (strncmp(ext, ".smc", 4) && strncmp(ext, ".sfc", 4)) return false;
-	
-	return true;
-}
-
-bool isDirectory(struct dirent* entry)
-{
-	struct stat st;
-	stat(entry->d_name, &st);
-	return st.st_mode & S_IFDIR;
-}
-
 
 bool debug_on = false;
 
-void toggleConsole(bool show)
-{
-	debug_on = show;
-
-	if (show)
-	{
-		videoBgEnableSub(0);
-		videoBgDisableSub(1);
-	}
-	else
-	{
-		videoBgEnableSub(1);
-		videoBgDisableSub(0);
-	}
-}
-
 u32 framecount = 0;
-u16 lastkeys = 0x03FF;
-u16 keypress = 0x03FF;
 
 ITCM_CODE void vblank()
 {
@@ -225,8 +185,6 @@ char fullpath[PATH_MAX+255];
 
 int main(int argc, char **argv)
 {
-	int i;
-
 	defaultExceptionHandler();
 
 	irqEnable(IRQ_VBLANK);
@@ -264,14 +222,13 @@ int main(int argc, char **argv)
 
 	keysSetRepeat(25, 5);
 
-	toggleConsole(true);
+	consoleDemoInit();
 #ifdef NITROFS_ROM
 	if (!nitroFSInit(NULL))
 #else
 	if (!fatInitDefault())
 #endif
 	{
-		toggleConsole(true);
 		iprintf("FAT init failed\n");
 		return -1;
 	}
