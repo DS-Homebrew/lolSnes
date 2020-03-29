@@ -33,12 +33,11 @@ steps:
      export DEVKITPRO="/opt/devkitpro"
      export DEVKITARM="/opt/devkitpro/devkitARM"
      make
-     make -f Makefile_nitrofs
   displayName: 'Build lolSnes'
 
 - script: |
      mkdir lolSnes/
-     cp lolSnes.nds lolSnes_nitrofs.nds lolSnes/
+     cp lolSnes.nds lolSnes/
      7z a lolSnes.7z lolSnes/
      cp lolSnes.7z $(Build.ArtifactStagingDirectory)/lolSnes.7z
   displayName: 'Pack 7z'
@@ -47,9 +46,9 @@ steps:
     export COMMIT_TAG="$(git log --format=%h -1)"
     git config --global user.email "flamekat54@aol.com"
     git config --global user.name "TWLBot"
-    git clone https://${{ secrets.BOT_TOKEN }}@github.com/TWLBot/Builds.git
-    cd Builds/extras
-    cp ../../lolSnes.7z lolSnes.7z
+    git clone https://$GITHUB_TOKEN@github.com/TWLBot/Builds.git
+    mv lolSnes.7z Builds/extras/lolSnes.7z
+    cd Builds
     git stage .
     git commit -m "lolSnes | $COMMIT_TAG"
     git push origin master
