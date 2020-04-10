@@ -99,6 +99,58 @@ void sleepMode()
 char* filelist;
 int nfiles;
 
+bool isGoodFile(struct dirent* entry)
+{
+
+	struct stat st;
+	stat(entry->d_name, &st);
+	if(st.st_mode & S_IFDIR) return true;
+
+	if (entry->d_type != DT_REG) return false;
+	
+	char* ext = &entry->d_name[strlen(entry->d_name) - 4];
+	if (strncmp(ext, ".smc", 4) && strncmp(ext, ".sfc", 4)) return false;
+	
+	return true;
+}
+
+bool isDirectory(struct dirent* entry)
+{
+	struct stat st;
+	stat(entry->d_name, &st);
+	return st.st_mode & S_IFDIR;
+}
+
+void makeROMList()
+{
+	DIR* romdir = opendir(".");
+	int i = 0;
+	if (romdir) {
+		struct dirent* entry;
+
+		while (entry = readdir(romdir)) {
+			if (!isGoodFile(entry)) continue;
+			i++;
+		}
+
+		rewinddir(romdir);
+
+		filelist = (char*)malloc(i * 256);
+		nfiles = i;
+		i = 0;
+		while (entry = readdir(romdir)) {
+			if (!isGoodFile(entry)) continue;
+			char temp[255];
+			if(isDirectory(entry))	snprintf(temp, sizeof(temp), "./%s", entry->d_name);
+			else	snprintf(temp, sizeof(temp), "%s", entry->d_name);
+			strncpy(&filelist[i << 8], temp, 255);
+			filelist[(i << 8) + 255] = '\0';
+			i++;
+		}
+
+		closedir(romdir);
+	}
+}
 
 bool debug_on = false;
 
@@ -213,10 +265,11 @@ int main(int argc, char **argv)
 	*(vu16*)0x04001000 |= 0x2000;
 	*(vu16*)0x04001048 = 0x001F;
 	*(vu16*)0x0400104A = 0x003F;
+	
+	toggleConsole(false);
 
 	keysSetRepeat(25, 5);
 
-	consoleDemoInit();
 #ifdef NITROFS_ROM
 	if (!nitroFSInit(NULL))
 #else
@@ -226,37 +279,87 @@ int main(int argc, char **argv)
 		iprintf("FAT init failed\n");
 		return -1;
 	}
-
+	
+	makeROMList();
+	
 	makeMenu();
 
 	iprintf("lolSnes " VERSION ", by Arisotura\n");
 	
-	if (argc <= 0) {
-		iprintf("No ARGV argument passed");
-		stop();
+	if (argc >= 1) {
+		char* filename = argv[1];
+
+		if (!Mem_LoadROM(filename))
+		{
+			iprintf("ROM loading failed\n");
+			stop();
+		}
+
+		*(vu16*)0x04001000 &= 0xDFFF;
+		toggleConsole(true);
+		iprintf("ROM loaded, running\n");
+
+		CPU_Reset();
+		fifoSendValue32(FIFO_USER_01, 1);
+
+		swiWaitForVBlank();
+		fifoSendValue32(FIFO_USER_01, 2);
+
+		irqSet(IRQ_VBLANK, vblank);
+		irqSet(IRQ_HBLANK, PPU_HBlank);
+
+		swiWaitForVBlank();
+		CPU_Run();
+	} else for (;;) {
+		scanKeys();
+		int pressed = keysDownRepeat();
+
+		if (pressed & KEY_UP) {
+			menusel--;
+			if (menusel < 0) menusel = 0;
+			if (menusel < menuscroll) menuscroll = menusel;
+			makeMenu();
+		} else if (pressed & KEY_DOWN) {
+			menusel++;
+			if (menusel > nfiles-1) menusel = nfiles-1;
+			if (menusel-21 > menuscroll) menuscroll = menusel-21;
+			makeMenu();
+		} else if (pressed & KEY_A) {
+			if(strncmp(&filelist[menusel << 8], "./", 2) == 0) {
+				chdir(&filelist[menusel << 8]);
+				menusel = 0;
+				makeROMList();
+				makeMenu();
+			} else {
+				char path[PATH_MAX];
+				getcwd(path, PATH_MAX);
+				snprintf(fullpath, sizeof(fullpath), "%s%s", path, &filelist[menusel << 8]);
+
+				if (!Mem_LoadROM(fullpath)) {
+					iprintf("ROM loading failed\n");
+					continue;
+				}
+
+				*(vu16*)0x04001000 &= 0xDFFF;
+				toggleConsole(true);
+				iprintf("ROM loaded, running\n");
+
+				CPU_Reset();
+				fifoSendValue32(FIFO_USER_01, 1);
+
+				swiWaitForVBlank();
+				fifoSendValue32(FIFO_USER_01, 2);
+
+				irqSet(IRQ_VBLANK, vblank);
+				irqSet(IRQ_HBLANK, PPU_HBlank);
+
+				swiWaitForVBlank();
+				CPU_Run();
+			}
+		}
+			
+		swiWaitForVBlank();
 	}
-
-	char* filename = argv[1];
-
-	if (!Mem_LoadROM(filename)) {
-		iprintf("ROM loading failed\n");
-		stop();
-	}
-
-	*(vu16*)0x04001000 &= 0xDFFF;
-	iprintf("ROM loaded, running\n");
-
-	CPU_Reset();
-	fifoSendValue32(FIFO_USER_01, 1);
-
-	swiWaitForVBlank();
-	fifoSendValue32(FIFO_USER_01, 2);
-
-	irqSet(IRQ_VBLANK, vblank);
-	irqSet(IRQ_HBLANK, PPU_HBlank);
-
-	swiWaitForVBlank();
-	CPU_Run();
 
 	return 0;
 }
