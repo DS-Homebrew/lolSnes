@@ -101,10 +101,9 @@ int nfiles;
 
 bool isGoodFile(struct dirent* entry)
 {
-
-	struct stat st;
+	/*struct stat st;
 	stat(entry->d_name, &st);
-	if(st.st_mode & S_IFDIR) return true;
+	if(st.st_mode & S_IFDIR) return true;*/
 
 	if (entry->d_type != DT_REG) return false;
 	
@@ -123,7 +122,7 @@ bool isDirectory(struct dirent* entry)
 
 void makeROMList()
 {
-	DIR* romdir = opendir(".");
+	DIR* romdir = opendir("/roms/snes");
 	int i = 0;
 	if (romdir) {
 		struct dirent* entry;
@@ -140,10 +139,11 @@ void makeROMList()
 		i = 0;
 		while (entry = readdir(romdir)) {
 			if (!isGoodFile(entry)) continue;
-			char temp[255];
+			/*char temp[255];
 			if(isDirectory(entry))	snprintf(temp, sizeof(temp), "./%s", entry->d_name);
 			else	snprintf(temp, sizeof(temp), "%s", entry->d_name);
-			strncpy(&filelist[i << 8], temp, 255);
+			strncpy(&filelist[i << 8], temp, 255);*/
+			strncpy(&filelist[i << 8], entry->d_name, 255);
 			filelist[(i << 8) + 255] = '\0';
 			i++;
 		}
@@ -154,6 +154,21 @@ void makeROMList()
 
 bool debug_on = false;
 
+void toggleConsole(bool show)
+{
+	debug_on = show;
+
+	if (show)
+	{
+		videoBgEnableSub(0);
+		videoBgDisableSub(1);
+	}
+	else
+	{
+		videoBgEnableSub(1);
+		videoBgDisableSub(0);
+	}
+}
 u32 framecount = 0;
 
 ITCM_CODE void vblank()
@@ -233,11 +248,6 @@ int main(int argc, char **argv)
 {
 	defaultExceptionHandler();
 
-	irqEnable(IRQ_VBLANK);
-	irqEnable(IRQ_HBLANK);
-
-	irqSet(IRQ_VBLANK, vblank_idle);
-
 	fifoSetValue32Handler(FIFO_USER_02, arm7print, NULL);
 
 	//vramSetBankA(VRAM_A_LCD);
@@ -306,7 +316,9 @@ int main(int argc, char **argv)
 		fifoSendValue32(FIFO_USER_01, 2);
 
 		irqSet(IRQ_VBLANK, vblank);
+		irqEnable(IRQ_VBLANK);
 		irqSet(IRQ_HBLANK, PPU_HBlank);
+		irqEnable(IRQ_HBLANK);
 
 		swiWaitForVBlank();
 		CPU_Run();
@@ -351,7 +363,9 @@ int main(int argc, char **argv)
 				fifoSendValue32(FIFO_USER_01, 2);
 
 				irqSet(IRQ_VBLANK, vblank);
+				irqEnable(IRQ_VBLANK);
 				irqSet(IRQ_HBLANK, PPU_HBlank);
+				irqEnable(IRQ_HBLANK);
 
 				swiWaitForVBlank();
 				CPU_Run();
