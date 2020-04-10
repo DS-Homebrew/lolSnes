@@ -2,6 +2,7 @@
 // Credits go to Archeide and whoever else participated in this.
 
 #include <nds.h>
+#include <string.h>
 //#include "pocketspc.h"
 
 #include "dsp.h"
