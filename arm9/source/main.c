@@ -122,7 +122,7 @@ bool isDirectory(struct dirent* entry)
 
 void makeROMList()
 {
-	DIR* romdir = opendir("/roms/snes");
+	DIR* romdir = opendir("/roms/snes/");
 	int i = 0;
 	if (romdir) {
 		struct dirent* entry;
@@ -169,7 +169,10 @@ void toggleConsole(bool show)
 		videoBgDisableSub(0);
 	}
 }
+
 u32 framecount = 0;
+u16 lastkeys = 0x03FF;
+u16 keypress = 0x03FF;
 
 ITCM_CODE void vblank()
 {
@@ -185,6 +188,15 @@ ITCM_CODE void vblank()
 
 void vblank_idle()
 {
+	// debug: toggle menu/console when pressing L+R+Down+B
+	u16 keys = *(vu16*)0x04000130;
+	if (keys != lastkeys)
+	{
+		lastkeys = keys;
+		keypress = keys;
+		if (!(keys & 0x0382))
+			toggleConsole(!debug_on);
+	}
 }
 
 
@@ -248,6 +260,9 @@ int main(int argc, char **argv)
 {
 	defaultExceptionHandler();
 
+	irqSet(IRQ_VBLANK, vblank_idle);
+	irqEnable(IRQ_VBLANK);
+
 	fifoSetValue32Handler(FIFO_USER_02, arm7print, NULL);
 
 	//vramSetBankA(VRAM_A_LCD);
@@ -296,7 +311,7 @@ int main(int argc, char **argv)
 
 	iprintf("lolSnes " VERSION ", by Arisotura\n");
 	
-	if (argc >= 1) {
+	if (argc > 1) {
 		char* filename = argv[1];
 
 		if (!Mem_LoadROM(filename))
@@ -316,7 +331,6 @@ int main(int argc, char **argv)
 		fifoSendValue32(FIFO_USER_01, 2);
 
 		irqSet(IRQ_VBLANK, vblank);
-		irqEnable(IRQ_VBLANK);
 		irqSet(IRQ_HBLANK, PPU_HBlank);
 		irqEnable(IRQ_HBLANK);
 
@@ -337,12 +351,12 @@ int main(int argc, char **argv)
 			if (menusel-21 > menuscroll) menuscroll = menusel-21;
 			makeMenu();
 		} else if (pressed & KEY_A) {
-			if(strncmp(&filelist[menusel << 8], "./", 2) == 0) {
+			/*if(strncmp(&filelist[menusel << 8], "./", 2) == 0) {
 				chdir(&filelist[menusel << 8]);
 				menusel = 0;
 				makeROMList();
 				makeMenu();
-			} else {
+			} else {*/
 				char path[PATH_MAX];
 				getcwd(path, PATH_MAX);
 				snprintf(fullpath, sizeof(fullpath), "%s%s", path, &filelist[menusel << 8]);
@@ -363,15 +377,13 @@ int main(int argc, char **argv)
 				fifoSendValue32(FIFO_USER_01, 2);
 
 				irqSet(IRQ_VBLANK, vblank);
-				irqEnable(IRQ_VBLANK);
 				irqSet(IRQ_HBLANK, PPU_HBlank);
 				irqEnable(IRQ_HBLANK);
 
 				swiWaitForVBlank();
 				CPU_Run();
-			}
+			//}
 		}
-			
 		swiWaitForVBlank();
 	}
 
