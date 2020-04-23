@@ -85,31 +85,30 @@ int main()
 	fifoInit();
 
 	installSystemFIFO();
-	
-	irqEnable(IRQ_LID);
-	
-	irqEnable(IRQ_VBLANK);
+
 	irqSet(IRQ_VBLANK, vblank);
-	
+	irqEnable(IRQ_VBLANK);
+	irqEnable(IRQ_LID);
+
 	// wait till the ARM9 has mapped VRAM for us
 	for (;;)
 	{
 		u8 vrammap = *(vu8*)0x04000240;
 		if (vrammap & 0x01) break;
 	}
-	
+
 	// then proceed to copy shit
 	int i;
 	u32* src = (u32*)&SPC_ROM[0];
 	u32* dst = (u32*)0x0600FFC0;
 	for (i = 0; i < 64; i += 4)
 		*dst++ = *src++;
-	
-	irqEnable(IRQ_TIMER0);
+
+	irqSet(IRQ_TIMER0, DSP_Mix);
 	*(vu16*)0x04000100 = 0xBEA0;
 	//*(vu16*)0x04000100 = 0xA8C0;
 	*(vu16*)0x04000102 = 0x00C0;
-	irqSet(IRQ_TIMER0, DSP_Mix);
+	irqEnable(IRQ_TIMER0);
 
 	for (;;)
 	{
