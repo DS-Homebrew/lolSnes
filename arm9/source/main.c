@@ -340,26 +340,30 @@ int main(int argc, char **argv)
 		makeMenu();
 
 	  for (;;) {
-		scanKeys();
-		int pressed = keysDownRepeat();
-
-		if (pressed & KEY_UP) {
-			menusel--;
-			if (menusel < 0) menusel = 0;
-			if (menusel < menuscroll) menuscroll = menusel;
-			makeMenu();
-		} else if (pressed & KEY_DOWN) {
-			menusel++;
-			if (menusel > nfiles-1) menusel = nfiles-1;
-			if (menusel-21 > menuscroll) menuscroll = menusel-21;
-			makeMenu();
-		} else if (pressed & KEY_A) {
-			/*if(strncmp(&filelist[menusel << 8], "./", 2) == 0) {
-				chdir(&filelist[menusel << 8]);
-				menusel = 0;
-				makeROMList();
+		if (keypress != 0x03FF)
+		{
+			if (!(keypress & 0x0040)) // up
+			{
+				menusel--;
+				if (menusel < 0) menusel = 0;
+				if (menusel < menuscroll) menuscroll = menusel;
 				makeMenu();
-			} else {*/
+			}
+			else if (!(keypress & 0x0080)) // down
+			{
+				menusel++;
+				if (menusel > nfiles-1) menusel = nfiles-1;
+				if (menusel-21 > menuscroll) menuscroll = menusel-21;
+				makeMenu();
+			}
+			else if ((keypress & 0x0003) != 0x0003) // A/B
+			{
+				/*if(strncmp(&filelist[menusel << 8], "./", 2) == 0) {
+					chdir(&filelist[menusel << 8]);
+					menusel = 0;
+					makeROMList();
+					makeMenu();
+				} else {*/
 				char path[PATH_MAX];
 				getcwd(path, PATH_MAX);
 				snprintf(fullpath, sizeof(fullpath), "%s%s", path, &filelist[menusel << 8]);
@@ -386,7 +390,10 @@ int main(int argc, char **argv)
 
 				swiWaitForVBlank();
 				CPU_Run();
-			//}
+				//}
+			}
+
+			keypress = 0x03FF;
 		}
 		swiWaitForVBlank();
 	  }
