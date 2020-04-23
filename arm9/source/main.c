@@ -122,6 +122,7 @@ bool isDirectory(struct dirent* entry)
 
 void makeROMList()
 {
+	chdir("/roms/snes/");
 	DIR* romdir = opendir("/roms/snes/");
 	int i = 0;
 	if (romdir) {
@@ -304,15 +305,13 @@ int main(int argc, char **argv)
 		iprintf("FAT init failed\n");
 		return -1;
 	}
-	
-	makeROMList();
-	
-	makeMenu();
 
 	iprintf("lolSnes " VERSION ", by Arisotura\n");
-	
+
 	if (argc > 1) {
 		char* filename = argv[1];
+
+		toggleConsole(true);
 
 		if (!Mem_LoadROM(filename))
 		{
@@ -321,7 +320,6 @@ int main(int argc, char **argv)
 		}
 
 		*(vu16*)0x04001000 &= 0xDFFF;
-		toggleConsole(true);
 		iprintf("ROM loaded, running\n");
 
 		CPU_Reset();
@@ -336,7 +334,12 @@ int main(int argc, char **argv)
 
 		swiWaitForVBlank();
 		CPU_Run();
-	} else for (;;) {
+	} else {
+		makeROMList();
+
+		makeMenu();
+
+	  for (;;) {
 		scanKeys();
 		int pressed = keysDownRepeat();
 
@@ -362,6 +365,7 @@ int main(int argc, char **argv)
 				snprintf(fullpath, sizeof(fullpath), "%s%s", path, &filelist[menusel << 8]);
 
 				if (!Mem_LoadROM(fullpath)) {
+					//iprintf("%s\n", fullpath);
 					iprintf("ROM loading failed\n");
 					continue;
 				}
@@ -385,6 +389,7 @@ int main(int argc, char **argv)
 			//}
 		}
 		swiWaitForVBlank();
+	  }
 	}
 
 	return 0;
